@@ -128,7 +128,7 @@ fn main() {
     // Part 1
     let mut part1_res: usize = 0;
     root.part1_visit(&mut part1_res);
-    println!("Part1: {}", part1_res);
+    println!("Part 1: {}", part1_res);
 
     // Part 2
     let disk_space: usize = 70000000;
@@ -139,5 +139,5 @@ fn main() {
     println!("Current size: {} - Max: {} - To delete: {}", currently_occupied, max_occupied, to_delete);
     let mut part2_res: usize = root.size;
     root.part2_visit(to_delete, &mut part2_res);
-    println!("Part1: {}", part2_res);
+    println!("Part 2: {}", part2_res);
 }
