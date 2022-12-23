@@ -79,7 +79,7 @@ fn parse_input() -> Vec<Move> {
                 "L" => L,
                 "U" => U,
                 "D" => D,
-                _ => panic!("Unknokn command")
+                _ => panic!("Unknown command")
             }
         }).into_iter()
     }).collect()
