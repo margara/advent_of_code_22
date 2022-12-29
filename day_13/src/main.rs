@@ -1,10 +1,7 @@
-extern crate core;
-
 use std::cmp::{min, Ordering};
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::{self, BufRead};
-use std::os::unix::raw::ino_t;
 use crate::Data::{List, Num};
 
 #[derive(Clone)]
