@@ -1,9 +1,10 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{self, BufRead};
 use petgraph::graph::{NodeIndex, UnGraph};
 use itertools::Itertools;
 use petgraph::algo::dijkstra;
+use petgraph::visit::Walker;
 
 #[derive(Debug)]
 struct Valve {
@@ -15,6 +16,33 @@ struct Valve {
 impl Valve {
     pub fn new(name: u32, flow: i32, tunnels: Vec<u32>) -> Self {
         Self { name, flow, tunnels }
+    }
+}
+
+#[derive(Eq, PartialEq, Hash, Ord, PartialOrd)]
+struct Path {
+    // (valve, time when opened, total flow released)
+    opened: Vec<(u32, i32, i32)>,
+}
+
+impl Path {
+    pub fn new(opened: Vec<(u32, i32, i32)>) -> Self {
+        Self { opened }
+    }
+
+    pub fn merged_flow(&self, other: &Path) -> i32 {
+        let res = self.opened.iter().map(|(_, _, f)| *f).sum::<i32>();
+        let map: HashMap<_, _> = self.opened.iter()
+            .map(|(v, t, f)| (*v, (*t, *f)))
+            .collect();
+        let res = res + other.opened.iter().map(|(other_v, other_t, other_f)| {
+            match map.get(other_v) {
+                Some((t, f)) => if *t > *other_t { 0 } else { *other_f - *f },
+                None => *other_f,
+            }
+        }).sum::<i32>();
+
+        res
     }
 }
 
@@ -108,6 +136,23 @@ fn compute_best_flow(valves: &HashMap<u32, Valve>, dist_map: &HashMap<(u32, u32)
     }).max().unwrap()
 }
 
+fn compute_paths(valves: &HashMap<u32, Valve>, dist_map: &HashMap<(u32, u32), i32>, to_open: &Vec<u32>, opened: &Vec<(u32, i32, i32)>, current_valve: u32, remaining_time: i32, res: &mut HashSet<Path>) {
+    to_open.iter()
+        .filter(|&next| opened.iter().find(|(n, _, _)| *n == *next).is_none() && current_valve != *next)
+        .for_each(|&next| {
+            let dist = *dist_map.get(&(current_valve, next)).unwrap();
+            if dist < remaining_time as i32 {
+                let mut opened_clone = opened.clone();
+                let next_time = remaining_time - dist - 1;
+                let flow = valves.get(&next).unwrap().flow * next_time;
+                opened_clone.push((next, next_time, flow));
+                compute_paths(valves, dist_map, to_open, &opened_clone, next, next_time, res);
+            } else {
+                res.insert(Path::new(opened.clone()));
+            }
+        });
+}
+
 fn main() {
     // Parsing
     let dict = create_dict();
@@ -126,4 +171,23 @@ fn main() {
     let opened = Vec::new();
     let best_flow = compute_best_flow(&valves, &dist_map, &to_open, &opened, start_valve, 30);
     println!("Best flow: {}", best_flow);
+
+    let to_open = non_zero_valves(&valves);
+    let opened = Vec::new();
+    let mut res = HashSet::new();
+    compute_paths(&valves, &dist_map, &to_open, &opened, start_valve, 26, &mut res);
+
+    let mut count = 0;
+    // TODO: shame on me for iterating over 1B elements!
+    let best_flow = res.iter().cartesian_product(res.iter())
+        .filter(|(p1, p2)| *p1 < *p2)
+        .map(|(p1, p2)| {
+            count += 1;
+            if count % 1000000 == 0 {
+                println!("... iteration {} ...", count);
+            }
+            p1.merged_flow(p2)
+        })
+        .max().unwrap();
+    println!("Best flow with elephant: {}", best_flow);
 }
