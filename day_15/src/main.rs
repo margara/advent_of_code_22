@@ -1,5 +1,3 @@
-extern crate core;
-
 use std::cmp::{max, min};
 use std::fs::File;
 use std::io::{self, BufRead};
