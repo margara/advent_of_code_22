@@ -112,5 +112,3 @@ fn main() {
     let mut input_with_unreachable = input_set.union(&unreachable).cloned().collect::<Vec<_>>();
     compute_connected(&mut input_with_unreachable);
 }
-
-
