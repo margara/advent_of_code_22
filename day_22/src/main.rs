@@ -5,6 +5,8 @@ use crate::Command::{Forward, Left, Right};
 use crate::Tile::{Blank, Open, Wall};
 use crate::Dir::{U, R, D, L};
 
+static SIDE: usize = 50;
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum Tile {
     Blank, Open, Wall
@@ -42,6 +44,25 @@ impl State {
                     if let Open = *map.get(next_position.0, next_position.1).unwrap() {
                         self.row = next_position.0;
                         self.col = next_position.1;
+                    } else {
+                        break;
+                    }
+                }
+            },
+        }
+    }
+
+    fn execute_command3d(&mut self, map: &Array2D<Tile>, command: Command) {
+        match command {
+            Right => self.rotate_right(),
+            Left => self.rotate_left(),
+            Forward(num_tiles) => {
+                for _ in 0..num_tiles {
+                    let next_position = self.get_next_position3d(map);
+                    if let Open = *map.get(next_position.0, next_position.1).unwrap() {
+                        self.row = next_position.0;
+                        self.col = next_position.1;
+                        self.dir = next_position.2;
                     } else {
                         break;
                     }
@@ -96,6 +117,104 @@ impl State {
                     new_pos.0 += 1;
                 }
                 new_pos
+            },
+        }
+    }
+
+    //   1122
+    //   1122
+    //   33
+    //   33
+    // 4455
+    // 4455
+    // 66
+    // 66
+    fn get_next_position3d(&self, map: &Array2D<Tile>) -> (usize, usize, Dir) {
+        let pos = (self.row, self.col);
+        match self.dir {
+            R => {
+                let new_pos = (pos.0, pos.1 + 1, R);
+                if let Blank = *map.get(new_pos.0, new_pos.1).unwrap() {
+                    // 2 --> 5
+                    if pos.0 <= SIDE {
+                        (SIDE + 1 - pos.0 + 2 * SIDE, 2 * SIDE, L)
+                    }
+                    // 3 --> 2
+                    else if pos.0 <= 2 * SIDE {
+                        (SIDE, pos.0 + SIDE, U)
+                    }
+                    // 5 --> 2
+                    else if pos.0 <= 3 * SIDE {
+                        (3 * SIDE + 1 - pos.0, 3 * SIDE, L) // TODO
+                    }
+                    // 6 --> 5
+                    else {
+                        (3 * SIDE, pos.0 - 2 * SIDE, U)
+                    }
+                } else {
+                    new_pos
+                }
+            },
+            L => {
+                let new_pos = (pos.0, pos.1 - 1, L);
+                if let Blank = *map.get(new_pos.0, new_pos.1).unwrap() {
+                    // 1 --> 4
+                    if pos.0 <= SIDE {
+                        (SIDE + 1 - pos.0 + 2 * SIDE, 1, R)
+                    }
+                    // 3 --> 4
+                    else if pos.0 <= 2 * SIDE {
+                        (2 * SIDE + 1, pos.0 - SIDE, D)
+                    }
+                    // 4 --> 1
+                    else if pos.0 <= 3 * SIDE {
+                        (3 * SIDE + 1 - pos.0, SIDE + 1, R)
+                    }
+                    // 6 --> 1
+                    else {
+                        (1, pos.0 - 2 * SIDE, D)
+                    }
+                } else {
+                    new_pos
+                }
+            },
+            U => {
+                let new_pos = (pos.0 - 1, pos.1, U);
+                if let Blank = *map.get(new_pos.0, new_pos.1).unwrap() {
+                    // 4 --> 3
+                    if pos.1 <= SIDE {
+                        (pos.1 + SIDE, SIDE + 1, R)
+                    }
+                    // 1 --> 6
+                    else if pos.1 <= 2 * SIDE {
+                        (pos.1 + 2 * SIDE, 1, R)
+                    }
+                    // 2 --> 6
+                    else {
+                        (4 * SIDE, pos.1 - 2 * SIDE, U)
+                    }
+                } else {
+                    new_pos
+                }
+            },
+            D => {
+                let new_pos = (pos.0 + 1, pos.1, D);
+                if let Blank = *map.get(new_pos.0, new_pos.1).unwrap() {
+                    // 6 --> 2
+                    if pos.1 <= SIDE {
+                        (1, pos.1 + 2 * SIDE, D)
+                    }
+                    // 5 --> 6
+                    else if pos.1 <= 2 * SIDE {
+                        (pos.1 + 2 * SIDE, SIDE, L)
+                    }
+                    // 2 --> 3
+                    else {
+                        (pos.1 - SIDE, 2 * SIDE, L)
+                    }
+                } else {
+                    new_pos
+                }
             },
         }
     }
@@ -194,11 +313,25 @@ fn main() {
     let (map, commands) = parse_input();
 
     // Part 1
-    let mut state = State::new(1, 50, R);
+    let first_row = 1;
+    let first_col = SIDE + 1;
+
+    let mut state = State::new(first_row, first_col, R);
     println!("{:?}", state);
     commands.iter().for_each(|&command| {
         println!("{:?}", command);
         state.execute_command(&map, command);
+        println!("{:?}", state);
+    });
+    let password = state.compute_password();
+    println!("The password is: {password}\n\n");
+
+    // Part 2
+    let mut state = State::new(first_row, first_col, R);
+    println!("{:?}", state);
+    commands.iter().for_each(|&command| {
+        println!("{:?}", command);
+        state.execute_command3d(&map, command);
         println!("{:?}", state);
     });
     let password = state.compute_password();
